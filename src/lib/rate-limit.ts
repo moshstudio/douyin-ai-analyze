@@ -1,10 +1,10 @@
 import prisma from "@/lib/prisma";
 
-// 未登录用户限制：每天最多 10 次对话
-const GUEST_DAILY_LIMIT = 10;
+// 未登录用户限制：每天最多 N 次对话（默认 10 次）
+const GUEST_DAILY_LIMIT = parseInt(process.env.GUEST_DAILY_LIMIT || "10", 10);
 
-// 已登录用户限制：每天最多 100 次对话
-const USER_DAILY_LIMIT = 100;
+// 已登录用户限制：每天最多 N 次对话（默认 20 次）
+const USER_DAILY_LIMIT = parseInt(process.env.USER_DAILY_LIMIT || "20", 20);
 
 export async function checkRateLimit(
   fingerprint?: string,

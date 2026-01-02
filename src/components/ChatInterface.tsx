@@ -1,9 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import Chat, { useMessages, MessageProps } from "@chatui/core";
+import Chat, {
+  useMessages,
+  MessageProps,
+  IconButton,
+  Typing,
+} from "@chatui/core";
 import "@chatui/core/dist/index.css";
-import "@/styles/chatui-overrides.css";
+// import "@/styles/chatui-overrides.css";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -59,6 +64,7 @@ function MessageContent({
 
   return (
     <div className='flex flex-col gap-2 w-full'>
+      {!msg.content && !msg.tool_calls?.length && <Typing />}
       {msg.content && (
         <div
           className={cn(
@@ -118,10 +124,13 @@ export default function ChatInterface({
     setFingerprint,
     addMessage,
     updateLastMessage,
+    addMessageToConversation,
+    updateLastMessageInConversation,
     loadConversations,
     refreshConversations,
     selectConversation,
     createConversation,
+    fingerprint,
   } = useChatStore();
   const { data: session } = useSession();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -133,6 +142,9 @@ export default function ChatInterface({
 
   // Sync URL conversationId with store
   useEffect(() => {
+    // Wait for authentication check or fingerprint generation
+    if (!session?.user && !fingerprint) return;
+
     if (conversationId && conversationId !== currentConversationId)
       selectConversation(conversationId);
     else if (!conversationId && currentConversationId !== null) {
@@ -151,6 +163,8 @@ export default function ChatInterface({
     currentConversationId,
     selectConversation,
     createConversation,
+    session,
+    fingerprint,
   ]);
 
   // Initialize fingerprint
@@ -226,11 +240,16 @@ export default function ChatInterface({
         if (!response.ok) throw new Error("Network error");
         if (!response.body) return;
 
-        addMessage({ id: `${Date.now() + 1}`, role: "assistant", content: "" });
+        addMessageToConversation(
+          { id: `${Date.now() + 1}`, role: "assistant", content: "" },
+          convId
+        );
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let done = false,
-          lastToolCallId: string | null = null;
+          lastToolCallId: string | null = null,
+          // 使用可变变量追踪当前流式输出的对话ID（用于新对话创建后更新）
+          streamConvId: string | null = convId;
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -241,20 +260,33 @@ export default function ChatInterface({
             if (jsonStr === "[DONE]") break;
             try {
               const data = JSON.parse(jsonStr);
-              const state = useChatStore.getState();
-              const lastMsg = state.messages[state.messages.length - 1];
+              // 获取目标对话的当前消息（用于判断最后一条消息）
+              const targetMsgs = await useChatStore
+                .getState()
+                .getMessagesForConversation(streamConvId);
+              const lastMsg = targetMsgs[targetMsgs.length - 1];
 
               if (data.type === "token") {
                 if (!lastMsg || lastMsg.role !== "assistant")
-                  addMessage({
-                    id: `${Date.now()}_${Math.random()}`,
-                    role: "assistant",
-                    content: data.content,
-                  });
-                else updateLastMessage(data.content);
+                  addMessageToConversation(
+                    {
+                      id: `${Date.now()}_${Math.random()}`,
+                      role: "assistant",
+                      content: data.content,
+                    },
+                    streamConvId
+                  );
+                else
+                  updateLastMessageInConversation(streamConvId, data.content);
               } else if (data.type === "step") {
                 if (data.status === "start") {
-                  lastToolCallId = `call_${Date.now()}`;
+                  lastToolCallId = `call_${
+                    typeof crypto !== "undefined" && crypto.randomUUID
+                      ? crypto.randomUUID()
+                      : `${Date.now()}_${Math.random()
+                          .toString(36)
+                          .slice(2, 11)}`
+                  }`;
                   const toolCall: ToolCall = {
                     id: lastToolCallId,
                     name: data.tool,
@@ -266,41 +298,54 @@ export default function ChatInterface({
                     toolCallId: lastToolCallId,
                   };
                   if (lastMsg?.role === "assistant" && !lastMsg.content)
-                    updateLastMessage("", [
+                    updateLastMessageInConversation(streamConvId, "", [
                       ...(lastMsg.tool_calls || []),
                       toolCall,
                     ]);
                   else
-                    addMessage({
-                      id: `${Date.now()}_${Math.random()}`,
-                      role: "assistant",
-                      content: "",
-                      tool_calls: [toolCall],
-                    });
+                    addMessageToConversation(
+                      {
+                        id: `${Date.now()}_${Math.random()}`,
+                        role: "assistant",
+                        content: "",
+                        tool_calls: [toolCall],
+                      },
+                      streamConvId
+                    );
                 } else if (data.status === "end") {
-                  addMessage({
-                    id: `${Date.now()}_${Math.random()}`,
-                    role: "tool",
-                    content:
-                      typeof data.output === "string"
-                        ? data.output
-                        : JSON.stringify(data.output),
-                    tool_call_id: lastToolCallId || `call_${Date.now()}`,
-                  });
+                  addMessageToConversation(
+                    {
+                      id: `${Date.now()}_${Math.random()}`,
+                      role: "tool",
+                      content:
+                        typeof data.output === "string"
+                          ? data.output
+                          : JSON.stringify(data.output),
+                      tool_call_id: lastToolCallId || `call_${Date.now()}`,
+                    },
+                    streamConvId
+                  );
                 }
               } else if (data.type === "meta") {
                 if (data.conversationId && !convId) {
-                  useChatStore
-                    .getState()
-                    .setCurrentConversationId(data.conversationId);
+                  // 更新流式输出追踪的对话ID
+                  streamConvId = data.conversationId;
 
-                  // Seamless URL update without page reload
-                  const newPath = `/${locale}/c/${data.conversationId}`;
-                  window.history.replaceState(
-                    { ...window.history.state, as: newPath, url: newPath },
-                    "",
-                    newPath
-                  );
+                  // 只有当用户没有切换到其他对话时，才更新当前对话ID和URL
+                  const currentState = useChatStore.getState();
+                  if (currentState.currentConversationId === null) {
+                    useChatStore
+                      .getState()
+                      .setCurrentConversationId(data.conversationId);
+
+                    // Seamless URL update without page reload
+                    const newPath = `/${locale}/c/${data.conversationId}`;
+                    window.history.replaceState(
+                      { ...window.history.state, as: newPath, url: newPath },
+                      "",
+                      newPath
+                    );
+                  }
 
                   // Immediately refresh the sidebar list
                   refreshConversations();
@@ -311,7 +356,8 @@ export default function ChatInterface({
                     limit: data.limit,
                   });
               } else if (data.type === "error")
-                updateLastMessage(
+                updateLastMessageInConversation(
+                  streamConvId,
                   `\n\n**Error:** ${data.message || data.error}`
                 );
             } catch (e) {
@@ -339,7 +385,8 @@ export default function ChatInterface({
       setRateLimit,
       t,
       addMessage,
-      updateLastMessage,
+      addMessageToConversation,
+      updateLastMessageInConversation,
       refreshConversations,
     ]
   );
@@ -374,12 +421,9 @@ export default function ChatInterface({
                 </AvatarFallback>
               </>
             ) : (
-              <>
-                <AvatarImage src='/bot-avatar.png' />
-                <AvatarFallback className='bg-gradient-to-br from-indigo-500 to-purple-600 text-white'>
-                  <Bot className='h-4 w-4' />
-                </AvatarFallback>
-              </>
+              <AvatarFallback className='bg-gradient-to-br from-indigo-500 to-purple-600 text-white'>
+                <Bot className='h-4 w-4' />
+              </AvatarFallback>
             )}
           </Avatar>
           <div
@@ -439,7 +483,7 @@ export default function ChatInterface({
         <div className='flex-1 overflow-hidden'>
           {messages.length === 0 ? (
             <div className='h-full flex flex-col'>
-              <div className='flex-1 flex items-center justify-center'>
+              <div className='flex-1 flex items-center justify-center hidden'>
                 <div className='flex flex-col items-center text-center space-y-6 p-8'>
                   <div className='w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20'>
                     <Sparkles className='w-10 h-10' />
@@ -470,17 +514,15 @@ export default function ChatInterface({
               placeholder={t("placeholder")}
               locale='zh-CN'
               rightAction={
-                isSending ? (
-                  <Button
-                    size='icon'
-                    variant='ghost'
-                    onClick={handleStop}
-                    className='h-10 w-10 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
-                    title='Stop'
-                  >
-                    <StopCircle className='w-5 h-5' />
-                  </Button>
-                ) : undefined
+                isSending
+                  ? {
+                      icon: "pause-circle",
+                      label: "停止",
+                      className:
+                        "!bg-gradient-to-r !from-red-500 !to-rose-500 !text-white !border-0 !rounded-lg !px-3 !py-1 !text-sm !font-medium   hover:!from-red-600 hover:!to-rose-600 !transition-all !duration-300",
+                      onClick: handleStop,
+                    }
+                  : undefined
               }
             />
           )}

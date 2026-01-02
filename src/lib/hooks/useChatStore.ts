@@ -75,6 +75,21 @@ interface ChatState {
     tool_call_id?: string
   ) => void;
   setCurrentConversationId: (id: string | null) => void;
+  // 新增：支持指定对话ID的方法，用于流式输出时防止对话切换导致的消息叠加
+  addMessageToConversation: (
+    message: Message,
+    targetConversationId: string | null
+  ) => void;
+  updateLastMessageInConversation: (
+    targetConversationId: string | null,
+    content: string,
+    toolCalls?: ToolCall[],
+    tool_call_id?: string
+  ) => void;
+  // 获取指定对话的消息（从缓存或当前state）
+  getMessagesForConversation: (
+    conversationId: string | null
+  ) => Promise<Message[]>;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -316,6 +331,140 @@ export const useChatStore = create<ChatState>()(
         }),
 
       setCurrentConversationId: (id) => set({ currentConversationId: id }),
+
+      // 添加消息到指定对话，只有当目标对话与当前显示对话匹配时才更新UI
+      addMessageToConversation: (message, targetConversationId) => {
+        const state = get();
+        const msgWithDate = {
+          ...message,
+          createdAt: message.createdAt || new Date().toISOString(),
+        };
+
+        // 如果目标对话与当前显示对话相同，更新UI状态
+        if (
+          targetConversationId === state.currentConversationId ||
+          (targetConversationId === null &&
+            state.currentConversationId === null)
+        ) {
+          const newMessages = [...state.messages, msgWithDate];
+          set({ messages: newMessages });
+          if (targetConversationId) {
+            debouncedSave(targetConversationId, newMessages);
+          }
+        } else if (targetConversationId) {
+          // 目标对话与当前不同，只保存到缓存，不更新UI
+          // 需要先获取该对话的缓存消息，然后追加
+          (async () => {
+            try {
+              const cachedMsgs =
+                ((await idbGet(
+                  `chat_msgs_${targetConversationId}`
+                )) as Message[]) || [];
+              const newMessages = [...cachedMsgs, msgWithDate];
+              await idbSet(`chat_msgs_${targetConversationId}`, newMessages);
+              console.log(
+                `[Stream] Message saved to background conversation: ${targetConversationId}`
+              );
+            } catch (err) {
+              console.error(
+                "Failed to save message to background conversation",
+                err
+              );
+            }
+          })();
+        }
+      },
+
+      // 更新指定对话的最后一条消息
+      updateLastMessageInConversation: (
+        targetConversationId,
+        content,
+        toolCalls,
+        tool_call_id
+      ) => {
+        const state = get();
+
+        // 如果目标对话与当前显示对话相同，更新UI状态
+        if (
+          targetConversationId === state.currentConversationId ||
+          (targetConversationId === null &&
+            state.currentConversationId === null)
+        ) {
+          const messages = [...state.messages];
+          if (messages.length === 0) return;
+
+          const lastMsg = messages[messages.length - 1];
+          const updatedMsg = {
+            ...lastMsg,
+            content: lastMsg.content + content,
+          };
+
+          if (toolCalls) {
+            updatedMsg.tool_calls = toolCalls;
+          }
+          if (tool_call_id) {
+            updatedMsg.tool_call_id = tool_call_id;
+          }
+
+          messages[messages.length - 1] = updatedMsg;
+          set({ messages });
+
+          if (targetConversationId) {
+            debouncedSave(targetConversationId, messages);
+          }
+        } else if (targetConversationId) {
+          // 目标对话与当前不同，只更新缓存
+          (async () => {
+            try {
+              const cachedMsgs =
+                ((await idbGet(
+                  `chat_msgs_${targetConversationId}`
+                )) as Message[]) || [];
+              if (cachedMsgs.length === 0) return;
+
+              const lastMsg = cachedMsgs[cachedMsgs.length - 1];
+              const updatedMsg = {
+                ...lastMsg,
+                content: lastMsg.content + content,
+              };
+
+              if (toolCalls) {
+                updatedMsg.tool_calls = toolCalls;
+              }
+              if (tool_call_id) {
+                updatedMsg.tool_call_id = tool_call_id;
+              }
+
+              cachedMsgs[cachedMsgs.length - 1] = updatedMsg;
+              await idbSet(`chat_msgs_${targetConversationId}`, cachedMsgs);
+            } catch (err) {
+              console.error(
+                "Failed to update message in background conversation",
+                err
+              );
+            }
+          })();
+        }
+      },
+
+      // 获取指定对话的消息
+      getMessagesForConversation: async (conversationId) => {
+        const state = get();
+        if (conversationId === state.currentConversationId) {
+          return state.messages;
+        }
+        if (conversationId && typeof window !== "undefined") {
+          try {
+            const cachedMsgs =
+              ((await idbGet(`chat_msgs_${conversationId}`)) as Message[]) ||
+              [];
+            return cachedMsgs;
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      },
     }),
     {
       name: "douyin-chat-storage", // name of the item in the storage (must be unique)

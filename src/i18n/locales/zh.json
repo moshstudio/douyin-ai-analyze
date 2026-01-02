@@ -14,13 +14,20 @@
     "disclaimer": "AI生成内容可能不准确，请谨慎参考。",
     "errorMessage": "抱歉，出错了，请重试。"
   },
+  "auth": {
+    "signInWithGithub": "GitHub 登录",
+    "signInWithGoogle": "Google 登录",
+    "signOut": "退出登录",
+    "signOutShort": "退出"
+  },
   "common": {
     "loading": "加载中...",
     "error": "发生错误",
     "retry": "重试",
     "cancel": "取消",
     "confirm": "确认",
-    "delete": "删除"
+    "delete": "删除",
+    "user": "用户"
   },
   "header": {
      "rateLimitAuth": "今日剩余 {remaining}/{limit} 次对话",

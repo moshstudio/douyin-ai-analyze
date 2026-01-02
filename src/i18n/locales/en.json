@@ -14,13 +14,20 @@
     "disclaimer": "AI responses may be inaccurate. Please analyze with discretion.",
     "errorMessage": "Sorry, something went wrong. Please try again."
   },
+  "auth": {
+    "signInWithGithub": "Sign in with GitHub",
+    "signInWithGoogle": "Sign in with Google",
+    "signOut": "Sign Out",
+    "signOutShort": "Sign Out"
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error occurred",
     "retry": "Retry",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "delete": "Delete"
+    "delete": "Delete",
+    "user": "User"
   },
   "header": {
      "rateLimitAuth": "Remaining: {remaining}/{limit} conversations today",
