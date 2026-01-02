@@ -51,7 +51,12 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const { messages, conversationId, fingerprint } = await req.json();
+        const { messages, conversationId, fingerprint } =
+          (await req.json()) as {
+            messages: { role: string; content: string }[];
+            conversationId?: string;
+            fingerprint?: string;
+          };
 
         if (!messages || !Array.isArray(messages)) {
           const errorResponse: InvalidFormatErrorResponse = {

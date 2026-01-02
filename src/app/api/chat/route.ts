@@ -9,7 +9,10 @@ import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, conversationId } = await req.json();
+    const { messages, conversationId } = (await req.json()) as {
+      messages: { role: string; content: string }[];
+      conversationId?: string;
+    };
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(

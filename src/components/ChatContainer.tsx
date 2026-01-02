@@ -39,7 +39,8 @@ export default function ChatContainer({
       fetch("/api/user/permissions")
         .then((res) => res.json())
         .then((data) => {
-          setCanViewFeedback(!!data.canViewFeedback);
+          const typedData = data as { canViewFeedback?: boolean };
+          setCanViewFeedback(!!typedData.canViewFeedback);
         })
         .catch(() => {
           setCanViewFeedback(false);

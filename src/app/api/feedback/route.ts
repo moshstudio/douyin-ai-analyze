@@ -6,8 +6,12 @@ import { auth } from "@/lib/auth";
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const body = await request.json();
-    const { type, content, email, fingerprint } = body;
+    const { type, content, email, fingerprint } = (await request.json()) as {
+      type: string;
+      content: string;
+      email?: string;
+      fingerprint?: string;
+    };
 
     // 验证必填字段
     if (!type || !content) {

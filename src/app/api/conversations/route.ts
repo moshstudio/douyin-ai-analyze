@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-1
+
     // 如果没有登录，则无法获取历史记录（或者后续实现基于fingerprint的获取，但通常基于userID）
     if (!userId) {
       return NextResponse.json({ conversations: [] });
@@ -41,8 +41,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    const body = await req.json();
-    const { title } = body;
+    const { title } = (await req.json()) as { title?: string };
 
     const conversation = await prisma.conversation.create({
       data: {

@@ -46,8 +46,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const session = await auth();
-  const body = await req.json();
-  const { fingerprint, title } = body;
+  const { fingerprint, title } = (await req.json()) as {
+    fingerprint?: string;
+    title?: string;
+  };
 
   if (!session?.user?.id && !fingerprint) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -118,7 +118,7 @@ export const useChatStore = create<ChatState>()(
 
           const res = await fetch(url);
           if (res.ok) {
-            const data = await res.json();
+            const data = (await res.json()) as Conversation[];
             set({ conversations: data });
           }
         } catch (error) {
@@ -137,7 +137,7 @@ export const useChatStore = create<ChatState>()(
           }
           const res = await fetch(url);
           if (res.ok) {
-            const data = await res.json();
+            const data = (await res.json()) as Conversation[];
             set({ conversations: data });
           }
         } catch (e) {
@@ -215,7 +215,7 @@ export const useChatStore = create<ChatState>()(
 
           const res = await fetch(url);
           if (res.ok) {
-            const data = await res.json();
+            const data = (await res.json()) as { messages: DbMessage[] };
 
             const newMessages: Message[] = (data.messages || []).map(
               (m: DbMessage) => ({
