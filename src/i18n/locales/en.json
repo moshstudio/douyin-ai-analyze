@@ -1,0 +1,63 @@
+{
+  "app": {
+    "title": "Douyin AI Analyzer",
+    "description": "Analyze Douyin videos with AI"
+  },
+  "chat": {
+    "placeholder": "Ask me anything about Douyin videos...",
+    "send": "Send",
+    "thinking": "Thinking...",
+    "analyzing": "Analyzing videos...",
+    "generating": "Generating report...",
+    "emptyStateTitle": "Douyin AI Assistant",
+    "emptyStateDesc": "Ask anything about Douyin videos, trends, or analysis.",
+    "disclaimer": "AI responses may be inaccurate. Please analyze with discretion.",
+    "errorMessage": "Sorry, something went wrong. Please try again."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error occurred",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete"
+  },
+  "header": {
+     "rateLimitAuth": "Remaining: {remaining}/{limit} conversations today",
+     "rateLimitGuest": "Guest limit: {remaining}/{limit} conversations today. Sign in for more.",
+     "signIn": "Sign In",
+     "signOut": "Sign Out"
+  },
+  "sidebar": {
+    "newChat": "New Chat",
+    "history": "History",
+    "noHistory": "No history yet.",
+    "deleteConfirm": "Delete conversation?",
+    "deleteDesc": "This action cannot be undone."
+  },
+  "feedback": {
+    "title": "Submit Feedback",
+    "viewTitle": "View Feedback",
+    "typeLabel": "Feedback Type",
+    "types": {
+      "feature": "Feature Request",
+      "optimization": "Optimization",
+      "bug": "Bug Report",
+      "other": "Other"
+    },
+    "contentLabel": "Feedback Content",
+    "contentPlaceholder": "Describe your idea or suggestion...",
+    "emailLabel": "Contact Email (Optional)",
+    "emailPlaceholder": "So we can reach out to you",
+    "submit": "Submit Feedback",
+    "submitSuccess": "Thank you for your feedback!",
+    "submitError": "Submission failed, please retry",
+    "noFeedback": "No feedback yet",
+    "status": {
+      "pending": "Pending",
+      "reviewed": "Reviewed",
+      "resolved": "Resolved"
+    }
+  }
+}
+

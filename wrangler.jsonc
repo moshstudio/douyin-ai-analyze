@@ -7,7 +7,10 @@
 	"name": "douyin-ai-analyze",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2025-10-08",
-	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
@@ -15,5 +18,12 @@
 	"observability": {
 		"enabled": true
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
+	"d1_databases": [
+		{
+			"binding": "douyin_ai_analyze",
+			"database_name": "douyin-ai-analyze",
+			"database_id": "0ce1594f-c5e8-4597-b883-110e0a42a02e"
+		}
+	]
 }

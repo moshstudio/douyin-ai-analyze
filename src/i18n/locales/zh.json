@@ -1,0 +1,63 @@
+{
+  "app": {
+    "title": "抖音AI分析器",
+    "description": "使用AI分析抖音视频数据"
+  },
+  "chat": {
+    "placeholder": "问我关于抖音视频的任何问题...",
+    "send": "发送",
+    "thinking": "思考中...",
+    "analyzing": "分析视频中...",
+    "generating": "生成报告中...",
+    "emptyStateTitle": "抖音AI助手",
+    "emptyStateDesc": "问我关于抖音视频、趋势或分析的任何问题。",
+    "disclaimer": "AI生成内容可能不准确，请谨慎参考。",
+    "errorMessage": "抱歉，出错了，请重试。"
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "发生错误",
+    "retry": "重试",
+    "cancel": "取消",
+    "confirm": "确认",
+    "delete": "删除"
+  },
+  "header": {
+     "rateLimitAuth": "今日剩余 {remaining}/{limit} 次对话",
+     "rateLimitGuest": "未登录用户今日剩余 {remaining}/{limit} 次对话，登录可获得更多次数",
+     "signIn": "登录",
+     "signOut": "登出"
+  },
+  "sidebar": {
+    "newChat": "新对话",
+    "history": "历史记录",
+    "noHistory": "暂无历史记录。",
+    "deleteConfirm": "删除对话？",
+    "deleteDesc": "此操作无法撤销。"
+  },
+  "feedback": {
+    "title": "提交反馈",
+    "viewTitle": "查看反馈",
+    "typeLabel": "反馈类型",
+    "types": {
+      "feature": "功能需求",
+      "optimization": "优化建议",
+      "bug": "Bug 报告",
+      "other": "其他"
+    },
+    "contentLabel": "反馈内容",
+    "contentPlaceholder": "请描述您的想法或建议...",
+    "emailLabel": "联系邮箱（可选）",
+    "emailPlaceholder": "方便我们与您联系",
+    "submit": "提交反馈",
+    "submitSuccess": "感谢您的反馈！",
+    "submitError": "提交失败，请重试",
+    "noFeedback": "暂无反馈",
+    "status": {
+      "pending": "待处理",
+      "reviewed": "已查看",
+      "resolved": "已解决"
+    }
+  }
+}
+
