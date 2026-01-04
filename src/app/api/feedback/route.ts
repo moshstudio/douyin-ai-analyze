@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { feedbacks, users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 
 // POST /api/feedback - 提交反馈
@@ -30,29 +32,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const db = getDb();
+
     // 验证用户是否存在（避免外键约束错误）
     let validUserId: string | null = null;
     if (session?.user?.id) {
-      const userExists = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { id: true },
-      });
-      if (userExists) {
+      const userExists = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1);
+
+      if (userExists.length > 0) {
         validUserId = session.user.id;
       }
     }
 
     // 创建反馈记录
-    const feedback = await prisma.feedback.create({
-      data: {
+    const createdFeedback = await db
+      .insert(feedbacks)
+      .values({
         userId: validUserId,
         fingerprint: validUserId ? null : fingerprint || null,
         email: email || null,
         type,
         content,
         status: "pending",
-      },
-    });
+        createdAt: new Date(),
+      })
+      .returning();
+
+    const feedback = createdFeedback[0];
 
     return NextResponse.json({
       success: true,

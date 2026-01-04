@@ -7,7 +7,9 @@ import {
   createToolCallingAgent,
 } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { conversations, messages as messagesTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { douyinSearchTool } from "@/lib/tools/douyin-search";
 import { videoAnalyzerTool } from "@/lib/tools/video-analyzer";
 import { reportGeneratorTool } from "@/lib/tools/report-generator";
@@ -187,10 +189,12 @@ export async function POST(req: NextRequest) {
           // 在本需求中，前端将只传最新一条，所以我们只需要把新消息加入历史
         } else if (conversationId) {
           // 缓存未命中但有会话ID，从数据库加载
-          const dbMessages = await prisma.message.findMany({
-            where: { conversationId },
-            orderBy: { createdAt: "asc" },
-          });
+          const db = getDb();
+          const dbMessages = await db
+            .select()
+            .from(messagesTable)
+            .where(eq(messagesTable.conversationId, conversationId))
+            .orderBy(messagesTable.createdAt);
 
           langchainHistory = new ChatMessageHistory();
           for (const msg of dbMessages) {
@@ -227,13 +231,16 @@ export async function POST(req: NextRequest) {
         // Save conversation to database
         let dbConversationId = conversationId;
         if (!dbConversationId) {
-          const conversation = await prisma.conversation.create({
-            data: {
+          const db = getDb();
+          const createdConversation = await db
+            .insert(conversations)
+            .values({
               userId: userId || null,
               fingerprint: userId ? null : fingerprint,
               title: currentInput.substring(0, 50) || "新对话",
-            },
-          });
+            })
+            .returning();
+          const conversation = createdConversation[0];
           dbConversationId = conversation.id;
           historyCache.set(dbConversationId, {
             history: langchainHistory,
@@ -242,12 +249,12 @@ export async function POST(req: NextRequest) {
         }
 
         // Save user message to database immediately to ensure correct order
-        await prisma.message.create({
-          data: {
-            conversationId: dbConversationId,
-            role: "user",
-            content: currentInput,
-          },
+        const db = getDb();
+        await db.insert(messagesTable).values({
+          conversationId: dbConversationId,
+          role: "user",
+          content: currentInput,
+          createdAt: new Date(),
         });
 
         // 记录使用次数
@@ -374,23 +381,21 @@ export async function POST(req: NextRequest) {
             await langchainHistory.addMessage(toolMsg);
 
             // 同时保存到数据库
-            await prisma.message.create({
-              data: {
-                conversationId: dbConversationId,
-                role: "assistant",
-                content: aiMsg.content as string,
-                metadata: JSON.stringify({ tool_calls: aiMsg.tool_calls }),
-              },
+            await db.insert(messagesTable).values({
+              conversationId: dbConversationId,
+              role: "assistant",
+              content: aiMsg.content as string,
+              metadata: JSON.stringify({ tool_calls: aiMsg.tool_calls }),
+              createdAt: new Date(),
             });
-            await prisma.message.create({
-              data: {
-                conversationId: dbConversationId,
-                role: "tool",
-                content: toolMsg.content as string,
-                metadata: JSON.stringify({
-                  tool_call_id: toolMsg.tool_call_id,
-                }),
-              },
+            await db.insert(messagesTable).values({
+              conversationId: dbConversationId,
+              role: "tool",
+              content: toolMsg.content as string,
+              metadata: JSON.stringify({
+                tool_call_id: toolMsg.tool_call_id,
+              }),
+              createdAt: new Date(),
             });
           }
         }
@@ -398,12 +403,11 @@ export async function POST(req: NextRequest) {
         await langchainHistory.addMessage(new AIMessage(finalOutput));
 
         // Save final assistant message to database
-        await prisma.message.create({
-          data: {
-            conversationId: dbConversationId,
-            role: "assistant",
-            content: finalOutput,
-          },
+        await db.insert(messagesTable).values({
+          conversationId: dbConversationId,
+          role: "assistant",
+          content: finalOutput,
+          createdAt: new Date(),
         });
 
         const doneResponse: DoneResponse = {

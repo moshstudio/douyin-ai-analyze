@@ -1,15 +1,15 @@
 import NextAuth from "next-auth";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { getPrisma } from "@/lib/prisma";
+import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { getDb } from "@/db";
 import { authConfig } from "./auth.config";
 import { NextRequest } from "next/server";
 
-// Create auth handlers that lazily initialize the Prisma adapter
+// Create auth handlers that lazily initialize the Drizzle adapter
 // This ensures getCloudflareContext() is only called during request handling
 function createAuth() {
-  const prisma = getPrisma();
+  const db = getDb();
   return NextAuth({
-    adapter: PrismaAdapter(prisma),
+    adapter: DrizzleAdapter(db),
     ...authConfig,
   });
 }

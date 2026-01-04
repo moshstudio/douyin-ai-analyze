@@ -5,7 +5,9 @@ import {
   AIMessage,
   SystemMessage,
 } from "@langchain/core/messages";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { conversations, messages as messagesTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,36 +59,36 @@ export async function POST(req: NextRequest) {
     const response = await model.invoke(allMessages);
 
     // Save conversation to database
+    const db = getDb();
     let dbConversationId = conversationId;
     if (!dbConversationId) {
       // Create new conversation
-      const conversation = await prisma.conversation.create({
-        data: {
+      const createdConversation = await db
+        .insert(conversations)
+        .values({
           userId: "default-user", // TODO: Implement user authentication
           title: messages[0]?.content?.substring(0, 50) || "新对话",
-        },
-      });
-      dbConversationId = conversation.id;
+        })
+        .returning();
+      dbConversationId = createdConversation[0].id;
     }
 
     // Save messages
     const lastUserMessage = messages[messages.length - 1];
     if (lastUserMessage) {
-      await prisma.message.create({
-        data: {
-          conversationId: dbConversationId,
-          role: lastUserMessage.role,
-          content: lastUserMessage.content,
-        },
+      await db.insert(messagesTable).values({
+        conversationId: dbConversationId,
+        role: lastUserMessage.role,
+        content: lastUserMessage.content,
+        createdAt: new Date(),
       });
     }
 
-    await prisma.message.create({
-      data: {
-        conversationId: dbConversationId,
-        role: "assistant",
-        content: response.content.toString(),
-      },
+    await db.insert(messagesTable).values({
+      conversationId: dbConversationId,
+      role: "assistant",
+      content: response.content.toString(),
+      createdAt: new Date(),
     });
 
     return NextResponse.json({

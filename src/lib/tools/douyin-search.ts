@@ -1,6 +1,7 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { videoAnalysis } from "@/db/schema";
 import { withCache } from "./cache";
 import { DouyinSearchResult, DouyinVideoData } from "@/lib/types/douyin";
 import { tikhubClient } from "@/lib/tikhub-client";
@@ -90,10 +91,12 @@ const douyinSearchToolBase = new DynamicStructuredTool({
 export const douyinSearchTool = withCache(douyinSearchToolBase, { ttl: 3600 });
 
 export async function saveVideoToDb(v: DouyinVideoData) {
+  const db = getDb();
   try {
-    return await prisma.videoAnalysis.upsert({
-      where: { videoId: v.aweme_id },
-      update: {
+    const returning = await db
+      .insert(videoAnalysis)
+      .values({
+        videoId: v.aweme_id,
         title: v.desc,
         author: v.author?.nickname,
         likes: v.statistics?.digg_count,
@@ -103,23 +106,28 @@ export async function saveVideoToDb(v: DouyinVideoData) {
         description: v.desc,
         tags: JSON.stringify(v.cha_list?.map((c) => c.cha_name) || []),
         videoUrl: v.share_url,
-        updatedAt: new Date(),
-      },
-      create: {
-        videoId: v.aweme_id,
-        title: v.desc,
-        author: v.author?.nickname,
-        likes: v.statistics?.digg_count,
-        comments: v.statistics?.comment_count,
-        shares: v.statistics?.share_count,
-        views: v.statistics?.play_count,
-        description: v.desc,
-        tags: JSON.stringify(v.cha_list?.map((c: any) => c.cha_name) || []),
-        videoUrl: v.share_url,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: videoAnalysis.videoId,
+        set: {
+          title: v.desc,
+          author: v.author?.nickname,
+          likes: v.statistics?.digg_count,
+          comments: v.statistics?.comment_count,
+          shares: v.statistics?.share_count,
+          views: v.statistics?.play_count,
+          description: v.desc,
+          tags: JSON.stringify(v.cha_list?.map((c) => c.cha_name) || []),
+          videoUrl: v.share_url,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return returning[0];
   } catch (dbError) {
     console.error("Failed to save video to DB:", dbError);
+    return null; // Return null on error so caller can handle it
   }
 }
 

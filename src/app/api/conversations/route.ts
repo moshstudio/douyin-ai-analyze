@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { conversations } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { eq, desc } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,21 +14,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ conversations: [] });
     }
 
-    const conversations = await prisma.conversation.findMany({
-      where: {
-        userId: userId,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-      include: {
-        _count: {
-          select: { messages: true },
+    const db = getDb();
+
+    // Use relation queries to get conversations with messages
+    const userConversations = await db.query.conversations.findMany({
+      where: eq(conversations.userId, userId),
+      orderBy: [desc(conversations.updatedAt)],
+      with: {
+        messages: {
+          columns: {
+            id: true,
+          },
         },
       },
     });
 
-    return NextResponse.json({ conversations });
+    const formattedConversations = userConversations.map((c) => ({
+      ...c,
+      _count: {
+        messages: c.messages.length,
+      },
+      messages: undefined, // Remove messages array from response to match Prisma shape if needed, or keep it
+    }));
+
+    return NextResponse.json({ conversations: formattedConversations });
   } catch (error) {
     console.error("Error fetching conversations:", error);
     return NextResponse.json(
@@ -43,14 +54,16 @@ export async function POST(req: NextRequest) {
     const userId = session?.user?.id;
     const { title } = (await req.json()) as { title?: string };
 
-    const conversation = await prisma.conversation.create({
-      data: {
+    const db = getDb();
+    const createdConversation = await db
+      .insert(conversations)
+      .values({
         userId: userId || null,
         title: title || "新对话",
-      },
-    });
+      })
+      .returning();
 
-    return NextResponse.json(conversation);
+    return NextResponse.json(createdConversation[0]);
   } catch (error) {
     console.error("Error creating conversation:", error);
     return NextResponse.json(

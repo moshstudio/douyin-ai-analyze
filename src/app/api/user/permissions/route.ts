@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 
 // GET /api/user/permissions - 获取当前用户权限
@@ -11,10 +13,14 @@ export async function GET() {
       return NextResponse.json({ canViewFeedback: false });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { canViewFeedback: true },
-    });
+    const db = getDb();
+    const userResult = await db
+      .select({ canViewFeedback: users.canViewFeedback })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    const user = userResult[0];
 
     return NextResponse.json({
       canViewFeedback: user?.canViewFeedback || false,

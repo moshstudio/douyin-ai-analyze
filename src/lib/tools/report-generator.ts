@@ -1,6 +1,8 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { videoAnalysis, reports } from "@/db/schema";
+import { inArray } from "drizzle-orm";
 import { getReportModel } from "@/lib/llm";
 import { withCache } from "./cache";
 
@@ -26,14 +28,12 @@ const reportGeneratorToolBase = new DynamicStructuredTool({
     userRequirements,
   }) => {
     try {
+      const db = getDb();
       // Fetch analyzed videos
-      const videos = await prisma.videoAnalysis.findMany({
-        where: {
-          videoId: {
-            in: videoIds,
-          },
-        },
-      });
+      const videos = await db
+        .select()
+        .from(videoAnalysis)
+        .where(inArray(videoAnalysis.videoId, videoIds));
 
       if (videos.length === 0) {
         return JSON.stringify({
@@ -111,8 +111,9 @@ ${i + 1}. ${v.title}
       }
 
       // Create report in database
-      const report = await prisma.report.create({
-        data: {
+      const createdReports = await db
+        .insert(reports)
+        .values({
           conversationId,
           title,
           summary: parsedReport.summary || "生成摘要失败",
@@ -121,8 +122,10 @@ ${i + 1}. ${v.title}
             parsedReport.insights || ""
           }\n\n## 行动建议\n\n${parsedReport.recommendations || ""}`,
           status: "completed",
-        },
-      });
+        })
+        .returning();
+
+      const report = createdReports[0];
 
       return JSON.stringify({
         success: true,

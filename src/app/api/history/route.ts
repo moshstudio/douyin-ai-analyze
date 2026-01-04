@@ -1,5 +1,7 @@
 import { auth } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { conversations } from "@/db/schema";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -12,29 +14,38 @@ export async function GET(req: Request) {
   }
 
   try {
-    const whereClause: any = {};
+    const conditions = [];
     if (session?.user?.id) {
-      whereClause.userId = session.user.id;
+      conditions.push(eq(conversations.userId, session.user.id));
     } else if (fingerprint) {
-      whereClause.fingerprint = fingerprint;
+      conditions.push(eq(conversations.fingerprint, fingerprint));
       // Ensure we don't accidentally fetch user's chats if fingerprint collides (unlikely but safe)
-      whereClause.userId = null;
+      conditions.push(isNull(conversations.userId));
     }
 
-    const conversations = await prisma.conversation.findMany({
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const db = getDb();
+
+    const fetchedConversations = await db.query.conversations.findMany({
       where: whereClause,
-      orderBy: {
-        updatedAt: "desc",
-      },
-      include: {
-        _count: {
-          select: { messages: true },
+      orderBy: [desc(conversations.updatedAt)],
+      with: {
+        messages: {
+          columns: { id: true },
         },
       },
-      take: 50, // Limit to 50 recent conversations for now
+      limit: 50, // Limit to 50 recent conversations for now
     });
 
-    return NextResponse.json(conversations);
+    const formattedConversations = fetchedConversations.map((c) => ({
+      ...c,
+      _count: {
+        messages: c.messages.length,
+      },
+      messages: undefined,
+    }));
+
+    return NextResponse.json(formattedConversations);
   } catch (error) {
     console.error("Error fetching history:", error);
     return NextResponse.json(
@@ -56,15 +67,17 @@ export async function POST(req: Request) {
   }
 
   try {
-    const conversation = await prisma.conversation.create({
-      data: {
-        userId: session?.user?.id,
-        fingerprint: session?.user?.id ? undefined : fingerprint,
+    const db = getDb();
+    const createdConversation = await db
+      .insert(conversations)
+      .values({
+        userId: session?.user?.id || null,
+        fingerprint: session?.user?.id ? null : fingerprint,
         title: title || "New Chat",
-      },
-    });
+      })
+      .returning();
 
-    return NextResponse.json(conversation);
+    return NextResponse.json(createdConversation[0]);
   } catch (error) {
     console.error("Error creating conversation:", error);
     return NextResponse.json(

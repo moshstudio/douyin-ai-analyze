@@ -1,17 +1,14 @@
-import { PrismaClient } from "./generated/prisma/client";
-import { PrismaD1 } from "@prisma/adapter-d1";
+import { drizzle } from "drizzle-orm/d1";
+import { users } from "./db/schema";
 
 export interface Env {
-  DB: D1Database;
+  douyin_ai_analyze: D1Database;
 }
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
-    const adapter = new PrismaD1(env.DB);
-    const prisma = new PrismaClient({ adapter });
-
-    const users = await prisma.user.findMany();
-    const result = JSON.stringify(users);
-    return new Response(result);
+    const db = drizzle(env.douyin_ai_analyze);
+    const result = await db.select().from(users).all();
+    return new Response(JSON.stringify(result));
   },
 } satisfies ExportedHandler<Env>;

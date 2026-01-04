@@ -1,7 +1,9 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import crypto from "crypto";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { toolCache } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
 export interface CacheOptions {
   ttl?: number; // Time to live in seconds
@@ -47,18 +49,23 @@ export function withCache<T extends z.ZodObject<z.ZodRawShape>>(
   tool.func = async (input: any, runManager?: any) => {
     const toolName = tool.name;
     const inputHash = generateInputHash(input as Record<string, unknown>);
+    const db = getDb();
 
     // 1. Try to get from cache
     if (enabled) {
       try {
-        const cachedResult = await prisma.toolCache.findUnique({
-          where: {
-            toolName_inputHash: {
-              toolName,
-              inputHash,
-            },
-          },
-        });
+        const cachedResults = await db
+          .select()
+          .from(toolCache)
+          .where(
+            and(
+              eq(toolCache.toolName, toolName),
+              eq(toolCache.inputHash, inputHash)
+            )
+          )
+          .limit(1);
+
+        const cachedResult = cachedResults[0];
 
         if (cachedResult) {
           const isExpired = cachedResult.expiresAt
@@ -96,25 +103,26 @@ export function withCache<T extends z.ZodObject<z.ZodRawShape>>(
       if (canCache) {
         try {
           const expiresAt = ttl ? new Date(Date.now() + ttl * 1000) : null;
-          await prisma.toolCache.upsert({
-            where: {
-              toolName_inputHash: {
-                toolName,
-                inputHash,
-              },
-            },
-            update: {
-              output: result,
-              expiresAt,
-              createdAt: new Date(),
-            },
-            create: {
+
+          await db
+            .insert(toolCache)
+            .values({
               toolName,
               inputHash,
-              output: result,
+              output:
+                typeof result === "string" ? result : JSON.stringify(result), // Store as string
               expiresAt,
-            },
-          });
+            })
+            .onConflictDoUpdate({
+              target: [toolCache.toolName, toolCache.inputHash],
+              set: {
+                output:
+                  typeof result === "string" ? result : JSON.stringify(result),
+                expiresAt,
+                createdAt: new Date(),
+              },
+            });
+
           console.log(`[Cache Saved] tool: ${toolName}`);
         } catch (cacheSaveError) {
           console.error(`[Cache Save Error] tool: ${toolName}`, cacheSaveError);

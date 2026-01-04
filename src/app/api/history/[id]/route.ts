@@ -1,5 +1,7 @@
 import { auth } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { conversations, messages } from "@/db/schema";
+import { eq, gt, asc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -17,10 +19,11 @@ export async function GET(
   }
 
   try {
-    const conversation = await prisma.conversation.findUnique({
-      where: {
-        id: params.id,
-      },
+    const db = getDb();
+    // Fetch conversation and messages in one go if possible, or check ownership first
+    // Checking ownership first is better pattern if messages are heavy
+    const conversation = await db.query.conversations.findFirst({
+      where: eq(conversations.id, params.id),
     });
 
     if (!conversation) {
@@ -42,17 +45,18 @@ export async function GET(
     }
 
     // Fetch messages with optional time filter
-    const messages = await prisma.message.findMany({
-      where: {
-        conversationId: params.id,
-        ...(after ? { createdAt: { gt: new Date(after) } } : {}),
+    const dbMessages = await db.query.messages.findMany({
+      where: (messages, { and, eq, gt }) => {
+        const conditions = [eq(messages.conversationId, params.id)];
+        if (after) {
+          conditions.push(gt(messages.createdAt, new Date(after)));
+        }
+        return and(...conditions);
       },
-      orderBy: {
-        createdAt: "asc",
-      },
+      orderBy: [asc(messages.createdAt)],
     });
 
-    return NextResponse.json({ ...conversation, messages });
+    return NextResponse.json({ ...conversation, messages: dbMessages });
   } catch (error) {
     console.error("Error fetching conversation:", error);
     return NextResponse.json(
@@ -76,8 +80,9 @@ export async function DELETE(
   }
 
   try {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: params.id },
+    const db = getDb();
+    const conversation = await db.query.conversations.findFirst({
+      where: eq(conversations.id, params.id),
     });
 
     if (!conversation) {
@@ -98,9 +103,7 @@ export async function DELETE(
       }
     }
 
-    await prisma.conversation.delete({
-      where: { id: params.id },
-    });
+    await db.delete(conversations).where(eq(conversations.id, params.id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

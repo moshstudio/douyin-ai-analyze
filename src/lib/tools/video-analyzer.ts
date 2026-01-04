@@ -1,6 +1,8 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import prisma from "@/lib/prisma";
+import { getDb } from "@/db";
+import { videoAnalysis } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { getAnalysisModel } from "@/lib/llm";
 import { withCache } from "./cache";
 import { tikhubClient } from "@/lib/tikhub-client";
@@ -30,14 +32,12 @@ const videoAnalyzerToolBase = new DynamicStructuredTool({
     userRequirements,
   }) => {
     try {
+      const db = getDb();
       // Fetch videos from database
-      const videos = await prisma.videoAnalysis.findMany({
-        where: {
-          videoId: {
-            in: videoIds,
-          },
-        },
-      });
+      const videos = await db
+        .select()
+        .from(videoAnalysis)
+        .where(inArray(videoAnalysis.videoId, videoIds));
 
       // Fallback: If some videos were not found in DB, try to fetch them from TikHub
       const foundVideoIds = videos.map((v) => v.videoId);
@@ -153,13 +153,13 @@ ${
 
       // Update videos with analysis
       for (const video of videos) {
-        await prisma.videoAnalysis.update({
-          where: { id: video.id },
-          data: {
+        await db
+          .update(videoAnalysis)
+          .set({
             analysis: analysisResult.content.toString(),
             sentiment: "积极", // Can be extracted from AI response
-          },
-        });
+          })
+          .where(eq(videoAnalysis.id, video.id));
       }
 
       return JSON.stringify({
