@@ -5,6 +5,7 @@ import { i18n } from "@/i18n/config";
 
 export const authConfig = {
   secret: process.env.AUTH_SECRET,
+  trustHost: true,
   session: { strategy: "jwt" },
   providers: [
     GitHub({
