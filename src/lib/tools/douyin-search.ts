@@ -59,13 +59,18 @@ const douyinSearchToolBase = new DynamicStructuredTool({
       // Simplify the data
       const simplifiedData = simplifyVideoData(rawData);
 
-      // Save videos to database for future analysis
+      // Save videos to database for future analysis (Parallel execution)
       if (simplifiedData.data && simplifiedData.data.business_data) {
-        for (const item of simplifiedData.data.business_data) {
-          if (item.type === 1 && item.data) {
-            await saveVideoToDb(item.data);
-          }
-        }
+        const savePromises = simplifiedData.data.business_data
+          .filter((item) => item.type === 1 && item.data)
+          .map((item) => saveVideoToDb(item.data));
+
+        // We await here to ensure data is saved, but running in parallel is much faster
+        // If speed is critical, we could wrap this in a catch block or not await it (if the environment allows background tasks)
+        // For Cloudflare Workers, we generally must await before response ends, but parallel is fine.
+        await Promise.all(savePromises).catch((err) =>
+          console.error("Batch save error:", err)
+        );
       }
 
       // Limit the number of videos returned to the tool

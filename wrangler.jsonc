@@ -3,27 +3,33 @@
  * https://developers.cloudflare.com/workers/wrangler/configuration/
  */
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "douyin-ai-analyze",
-	"main": ".open-next/worker.js",
-	"compatibility_date": "2025-10-08",
-	"compatibility_flags": [
-		"nodejs_compat",
-		"global_fetch_strictly_public"
-	],
-	"assets": {
-		"binding": "ASSETS",
-		"directory": ".open-next/assets"
-	},
-	"observability": {
-		"enabled": true
-	},
-	"upload_source_maps": true,
-	"d1_databases": [
-		{
-			"binding": "douyin_ai_analyze",
-			"database_name": "douyin-ai-analyze",
-			"database_id": "0ce1594f-c5e8-4597-b883-110e0a42a02e"
-		}
-	]
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "douyin-ai-analyze",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-10-08",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "d1_databases": [
+    {
+      "binding": "douyin_ai_analyze",
+      "database_name": "douyin-ai-analyze",
+      "database_id": "0ce1594f-c5e8-4597-b883-110e0a42a02e"
+    }
+  ],
+  "vars": {
+    "OPENAI_API_BASE": "https://api.deepseek.com/v1",
+    "TIKHUB_BASE_URL": "https://api.tikhub.io/api/v1",
+    "GITHUB_ID": "Ov23liCLj0FdQmjr2uzC",
+    "GOOGLE_ID": "673259592784-0cs9eol8muih5va74ijjhn3qmjocot3k.apps.googleusercontent.com",
+    "AGENT_MAX_ITERATIONS": "12",
+    "GUEST_DAILY_LIMIT": "100",
+    "USER_DAILY_LIMIT": "20"
+  }
 }

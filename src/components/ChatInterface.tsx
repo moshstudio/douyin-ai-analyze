@@ -8,7 +8,6 @@ import Chat, {
   Typing,
 } from "@chatui/core";
 import "@chatui/core/dist/index.css";
-// import "@/styles/chatui-overrides.css";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

@@ -10,6 +10,7 @@ if (!TIKHUB_TOKEN) {
 
 export const tikhubClient = axios.create({
   baseURL: TIKHUB_BASE_URL,
+  timeout: 15000, // 15 seconds timeout
   headers: {
     "Content-Type": "application/json",
     Authorization: TIKHUB_TOKEN ? `Bearer ${TIKHUB_TOKEN}` : "",
