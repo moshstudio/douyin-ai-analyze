@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const db = getDb();
+    const db = await getDb();
 
     // 检查用户是否有查看反馈的权限
     const userResult = await db

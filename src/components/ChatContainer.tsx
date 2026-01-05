@@ -25,13 +25,19 @@ export default function ChatContainer({
 }: {
   conversationId?: string;
 }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [rateLimit, setRateLimit] = useState<{
     remaining: number;
     limit: number;
   } | null>(null);
   const [canViewFeedback, setCanViewFeedback] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const t = useTranslations();
+
+  // Prevent hydration mismatch by only rendering session-dependent content after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch user permission for viewing feedback
   useEffect(() => {
@@ -47,6 +53,47 @@ export default function ChatContainer({
         });
     }
   }, [session?.user?.id]);
+
+  // Show loading placeholder until client is mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <div className='flex h-screen flex-col bg-background'>
+        <header className='sticky top-0 z-10 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
+          <div className='mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8'>
+            <div className='flex items-center gap-3'>
+              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'>
+                <svg
+                  className='h-6 w-6'
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M13 10V3L4 14h7v7l9-11h-7z'
+                  />
+                </svg>
+              </div>
+              <div>
+                <h1 className='text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300'>
+                  {t("app.title")}
+                </h1>
+              </div>
+            </div>
+            <div className='flex items-center gap-2'>
+              {/* Placeholder for auth button area */}
+              <div className='h-10 w-24 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800' />
+            </div>
+          </div>
+        </header>
+        <div className='flex-1 flex items-center justify-center'>
+          <div className='text-muted-foreground'>...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='flex h-screen flex-col bg-background'>

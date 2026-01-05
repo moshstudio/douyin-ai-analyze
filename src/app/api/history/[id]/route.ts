@@ -19,7 +19,7 @@ export async function GET(
   }
 
   try {
-    const db = getDb();
+    const db = await getDb();
     // Fetch conversation and messages in one go if possible, or check ownership first
     // Checking ownership first is better pattern if messages are heavy
     const conversation = await db.query.conversations.findFirst({
@@ -80,7 +80,7 @@ export async function DELETE(
   }
 
   try {
-    const db = getDb();
+    const db = await getDb();
     const conversation = await db.query.conversations.findFirst({
       where: eq(conversations.id, params.id),
     });

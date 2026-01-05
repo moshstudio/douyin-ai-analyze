@@ -57,24 +57,6 @@ export const accounts = sqliteTable(
   })
 );
 
-// Session
-export const sessions = sqliteTable(
-  "Session",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    sessionToken: text("sessionToken").unique().notNull(),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
-  },
-  (t) => ({
-    userIdIndex: index("Session_userId_key").on(t.userId),
-  })
-);
-
 // VerificationToken
 export const verificationTokens = sqliteTable(
   "VerificationToken",
@@ -292,17 +274,12 @@ export const reportToVideoAnalysis = sqliteTable(
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
-  sessions: many(sessions),
   conversations: many(conversations),
   feedbacks: many(feedbacks),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
   user: one(users, { fields: [accounts.userId], references: [users.id] }),
-}));
-
-export const sessionsRelations = relations(sessions, ({ one }) => ({
-  user: one(users, { fields: [sessions.userId], references: [users.id] }),
 }));
 
 export const conversationsRelations = relations(

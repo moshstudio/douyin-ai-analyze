@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    const db = getDb();
+    const db = await getDb();
 
     const fetchedConversations = await db.query.conversations.findMany({
       where: whereClause,
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const db = getDb();
+    const db = await getDb();
     const createdConversation = await db
       .insert(conversations)
       .values({

@@ -19,6 +19,7 @@ export function getAgentModel(config: LLMConfig = {}) {
     openAIApiKey: process.env.OPENAI_API_KEY,
     configuration: {
       baseURL: process.env.OPENAI_API_BASE,
+      fetch: globalThis.fetch,
     },
     streaming: config.streaming ?? true,
   });

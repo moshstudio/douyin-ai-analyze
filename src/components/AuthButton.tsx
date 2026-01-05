@@ -83,7 +83,7 @@ export default function AuthButton({ session }: AuthButtonProps) {
       <button
         onClick={() => handleSignIn("github")}
         disabled={loading !== null}
-        className={`${buttonBaseClass} bg-[#24292F] text-white hover:bg-[#24292F]/90 shadow-lg shadow-gray-900/10 gap-2.5`}
+        className={`${buttonBaseClass} !hidden bg-[#24292F] text-white hover:bg-[#24292F]/90 shadow-lg shadow-gray-900/10 gap-2.5`}
       >
         {loading === "github" ? (
           <Loader2 className='h-4 w-4 animate-spin' />

@@ -32,6 +32,7 @@
 		"axios": "^1.13.2",
 		"date-fns": "^4.1.0",
 		"drizzle-orm": "^0.45.1",
+		"highlight.js": "^11.11.1",
 		"idb-keyval": "^6.2.2",
 		"langchain": "^0.3.7",
 		"next": "16.0.10",
@@ -62,6 +63,7 @@
 		"eslint": "9.39.2",
 		"eslint-config-next": "16.0.7",
 		"lucide-react": "^0.562.0",
+		"sharp": "^0.34.5",
 		"tailwind-merge": "^3.4.0",
 		"tailwindcss": "4.1.17",
 		"typescript": "5.9.3",
@@ -79,6 +81,7 @@
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
 		"start": "next start",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "wrangler d1 migrations apply douyin-ai-analyze --local"
+		"db:migrate": "wrangler d1 migrations apply douyin-ai-analyze --local",
+		"db:migrate:remote": "wrangler d1 migrations apply douyin-ai-analyze --remote"
 	}
 }

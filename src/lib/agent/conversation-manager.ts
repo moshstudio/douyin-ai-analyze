@@ -52,7 +52,7 @@ export async function getOrCreateHistory(
 async function loadHistoryFromDatabase(
   conversationId: string
 ): Promise<ChatMessageHistory> {
-  const db = getDb();
+  const db = await getDb();
   const dbMessages = await db
     .select()
     .from(messagesTable)
@@ -96,7 +96,7 @@ export async function createConversation(
   fingerprint: string | undefined,
   title: string
 ): Promise<string> {
-  const db = getDb();
+  const db = await getDb();
   const createdConversation = await db
     .insert(conversations)
     .values({
@@ -116,7 +116,7 @@ export async function saveUserMessage(
   conversationId: string,
   content: string
 ): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   await db.insert(messagesTable).values({
     conversationId,
     role: "user",
@@ -133,7 +133,7 @@ export async function saveAssistantMessage(
   content: string,
   metadata?: object
 ): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   await db.insert(messagesTable).values({
     conversationId,
     role: "assistant",
@@ -151,7 +151,7 @@ export async function saveToolMessage(
   content: string,
   toolCallId: string
 ): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   await db.insert(messagesTable).values({
     conversationId,
     role: "tool",

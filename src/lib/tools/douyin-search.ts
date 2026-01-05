@@ -96,7 +96,7 @@ const douyinSearchToolBase = new DynamicStructuredTool({
 export const douyinSearchTool = withCache(douyinSearchToolBase, { ttl: 3600 });
 
 export async function saveVideoToDb(v: DouyinVideoData) {
-  const db = getDb();
+  const db = await getDb();
   try {
     const returning = await db
       .insert(videoAnalysis)

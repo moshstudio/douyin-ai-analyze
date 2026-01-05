@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ canViewFeedback: false });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const userResult = await db
       .select({ canViewFeedback: users.canViewFeedback })
       .from(users)

@@ -49,7 +49,7 @@ export function withCache<T extends z.ZodObject<z.ZodRawShape>>(
   tool.func = async (input: any, runManager?: any) => {
     const toolName = tool.name;
     const inputHash = generateInputHash(input as Record<string, unknown>);
-    const db = getDb();
+    const db = await getDb();
 
     // 1. Try to get from cache
     if (enabled) {

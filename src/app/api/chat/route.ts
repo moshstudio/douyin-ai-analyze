@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     const response = await model.invoke(allMessages);
 
     // Save conversation to database
-    const db = getDb();
+    const db = await getDb();
     let dbConversationId = conversationId;
     if (!dbConversationId) {
       // Create new conversation

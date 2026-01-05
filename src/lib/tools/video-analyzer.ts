@@ -32,7 +32,7 @@ const videoAnalyzerToolBase = new DynamicStructuredTool({
     userRequirements,
   }) => {
     try {
-      const db = getDb();
+      const db = await getDb();
       // Fetch videos from database
       const videos = await db
         .select()

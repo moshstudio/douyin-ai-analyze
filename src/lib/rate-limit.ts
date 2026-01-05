@@ -14,7 +14,7 @@ export async function checkRateLimit(
 ): Promise<{ allowed: boolean; remaining: number; limit: number }> {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const db = getDb();
+  const db = await getDb();
 
   if (userId) {
     // 已登录用户检查
@@ -71,7 +71,7 @@ export async function recordUsage(
   fingerprint?: string,
   userId?: string
 ): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   await db.insert(usageRecords).values({
     action,
     fingerprint,

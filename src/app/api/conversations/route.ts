@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ conversations: [] });
     }
 
-    const db = getDb();
+    const db = await getDb();
 
     // Use relation queries to get conversations with messages
     const userConversations = await db.query.conversations.findMany({
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const userId = session?.user?.id;
     const { title } = (await req.json()) as { title?: string };
 
-    const db = getDb();
+    const db = await getDb();
     const createdConversation = await db
       .insert(conversations)
       .values({

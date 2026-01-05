@@ -28,7 +28,7 @@ const reportGeneratorToolBase = new DynamicStructuredTool({
     userRequirements,
   }) => {
     try {
-      const db = getDb();
+      const db = await getDb();
       // Fetch analyzed videos
       const videos = await db
         .select()

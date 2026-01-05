@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getDb();
+    const db = await getDb();
 
     // 验证用户是否存在（避免外键约束错误）
     let validUserId: string | null = null;
