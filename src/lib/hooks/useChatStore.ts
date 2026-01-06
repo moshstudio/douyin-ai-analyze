@@ -3,6 +3,9 @@ import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 // import { Message } from "ai"; // 'ai' export issues
 
+// 用于防止 selectConversation 竞态条件的请求版本追踪
+let selectConversationVersion = 0;
+
 // Custom storage adapter for IndexedDB
 const storage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
@@ -151,6 +154,9 @@ export const useChatStore = create<ChatState>()(
       },
 
       selectConversation: async (id) => {
+        // 递增版本号，标记这是一个新的请求
+        const currentVersion = ++selectConversationVersion;
+
         set({ currentConversationId: id, isLoading: true, messages: [] });
 
         // 2. Fetch from API (Sync)
@@ -163,6 +169,15 @@ export const useChatStore = create<ChatState>()(
           if (typeof window !== "undefined") {
             try {
               const cachedMsgs = (await idbGet(`chat_msgs_${id}`)) as Message[];
+
+              // 检查版本号，如果已过期则跳过
+              if (currentVersion !== selectConversationVersion) {
+                console.log(
+                  `[Sync] Skipping stale request (version ${currentVersion} vs ${selectConversationVersion})`
+                );
+                return;
+              }
+
               if (cachedMsgs && cachedMsgs.length > 0) {
                 set({ messages: cachedMsgs, isLoading: false });
 
@@ -172,9 +187,9 @@ export const useChatStore = create<ChatState>()(
                 // We treat any ID that is NOT a valid number as a server ID.
                 let anchorIndex = -1;
                 for (let i = cachedMsgs.length - 1; i >= 0; i--) {
-                  const id = cachedMsgs[i].id;
+                  const msgId = cachedMsgs[i].id;
                   // Check if ID is NOT a valid number (so it's a string ID like CUID/UUID)
-                  if (Number.isNaN(Number(id))) {
+                  if (Number.isNaN(Number(msgId))) {
                     anchorIndex = i;
                     break;
                   }
@@ -206,6 +221,14 @@ export const useChatStore = create<ChatState>()(
             }
           }
 
+          // 再次检查版本号
+          if (currentVersion !== selectConversationVersion) {
+            console.log(
+              `[Sync] Skipping stale request before fetch (version ${currentVersion} vs ${selectConversationVersion})`
+            );
+            return;
+          }
+
           const params = new URLSearchParams();
           if (fingerprint) params.append("fingerprint", fingerprint);
           if (afterTimestamp) params.append("after", afterTimestamp);
@@ -214,6 +237,15 @@ export const useChatStore = create<ChatState>()(
           console.log(`[Sync] Fetching updates from: ${url}`);
 
           const res = await fetch(url);
+
+          // 请求完成后检查版本号，如果已过期则不更新状态
+          if (currentVersion !== selectConversationVersion) {
+            console.log(
+              `[Sync] Skipping stale response (version ${currentVersion} vs ${selectConversationVersion})`
+            );
+            return;
+          }
+
           if (res.ok) {
             const data = (await res.json()) as { messages: DbMessage[] };
 
@@ -238,6 +270,14 @@ export const useChatStore = create<ChatState>()(
               ? [...validMessages, ...newMessages]
               : newMessages;
 
+            // 最后再检查一次版本号
+            if (currentVersion !== selectConversationVersion) {
+              console.log(
+                `[Sync] Skipping stale final update (version ${currentVersion} vs ${selectConversationVersion})`
+              );
+              return;
+            }
+
             // Update state
             set({ messages: finalMessages, isLoading: false });
             // Sync to local DB
@@ -245,7 +285,11 @@ export const useChatStore = create<ChatState>()(
           }
         } catch (error) {
           console.error("Failed to load conversation messages", error);
-          if (get().messages.length === 0) {
+          // 只有当版本号匹配时才更新 isLoading 状态
+          if (
+            currentVersion === selectConversationVersion &&
+            get().messages.length === 0
+          ) {
             set({ isLoading: false });
           }
         }
